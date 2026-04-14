@@ -19,9 +19,17 @@ class BedrockClient:
         )
         self.client = session.client("bedrock-runtime")
 
-    def chat(self, user_message: str, system_prompt: str | None = None) -> Generator[str, None, None]:
+    def chat(
+        self,
+        user_message: str,
+        system_prompt: str | None = None,
+        file_context: str | None = None,
+    ) -> Generator[str, None, None]:
         """Send a message and stream back the response token by token."""
         self.history.append({"role": "user", "content": [{"text": user_message}]})
+
+        # Merge base system prompt + live file context into one system block
+        combined_system = "\n\n".join(filter(None, [system_prompt, file_context]))
 
         kwargs: dict = {
             "modelId": self.model_id,
@@ -31,8 +39,8 @@ class BedrockClient:
                 "temperature": self.temperature,
             },
         }
-        if system_prompt:
-            kwargs["system"] = [{"text": system_prompt}]
+        if combined_system:
+            kwargs["system"] = [{"text": combined_system}]
 
         response = self.client.converse_stream(**kwargs)
 
